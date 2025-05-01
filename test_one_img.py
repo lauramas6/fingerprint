@@ -1,7 +1,7 @@
 from src.dataset import load_image
 from src.preprocessing import binarize_image, thin_image
-from src.minutiae import extract_minutiae_CN, extract_minutiae_Harris
-from src.utils import plot_minutiae
+from src.minutiae_extraction import extract_minutiae_CN, extract_minutiae_Harris
+from src.display import plot_minutiae
 
 # Choose one fingerprint image from SOCOFing
 img_path = "data/SOCOFing/101__M__L__Plain__Left_index.BMP"  # adjust if needed
