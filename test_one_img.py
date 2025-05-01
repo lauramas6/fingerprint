@@ -1,0 +1,23 @@
+from src.dataset import load_image
+from src.preprocessing import binarize_image, thin_image
+from src.minutiae import extract_minutiae_CN, extract_minutiae_Harris
+from src.utils import plot_minutiae
+
+# Choose one fingerprint image from SOCOFing
+img_path = "data/SOCOFing/101__M__L__Plain__Left_index.BMP"  # adjust if needed
+img = load_image(img_path)
+
+# --- CN Method ---
+binary = binarize_image(img)
+thinned = thin_image(binary)
+minutiae_cn = extract_minutiae_CN(thinned)
+
+# --- Harris Method ---
+minutiae_harris = extract_minutiae_Harris(img)
+
+# --- Visualize Both ---
+print(f"CN Minutiae Count: {len(minutiae_cn)}")
+print(f"Harris Minutiae Count: {len(minutiae_harris)}")
+
+plot_minutiae(img, minutiae_cn, title="Minutiae (Crossing Number)")
+plot_minutiae(img, minutiae_harris, title="Minutiae (Harris Corner Detection)")
