@@ -1,9 +1,9 @@
 from src.dataset import load_image_paths, load_image, extract_label_from_filename
 from src.preprocessing import binarize_image, thin_image
-from src.minutiae import extract_minutiae_CN
+from src.minutiae_extraction import extract_minutiae_CN
 from src.features import extract_feature_vector
 from src.train import train_classifier, evaluate_classifier
-from src.utils import plot_confusion_matrix
+from src.display import plot_confusion_matrix
 
 import numpy as np
 
