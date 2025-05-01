@@ -4,7 +4,7 @@ from src.minutiae_extraction import extract_minutiae_CN, extract_minutiae_Harris
 from src.display import plot_minutiae
 
 # Choose one fingerprint image from SOCOFing
-img_path = "data/SOCOFing/101__M__L__Plain__Left_index.BMP"  # adjust if needed
+img_path = "data/SOCOFing/Real/101__M__Left__index__finger.BMP"  # adjust if needed
 img = load_image(img_path)
 
 # --- CN Method ---
