@@ -1,12 +1,13 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def plot_minutiae(img, minutiae_points):
+def plot_minutiae(img, minutiae_points, title="Minutiae Points"):
     """Overlay minutiae points on fingerprint image."""
+    plt.figure(figsize=(6, 6))
     plt.imshow(img, cmap='gray')
     y, x = zip(*minutiae_points)
     plt.scatter(x, y, c='red', s=10)
-    plt.title('Minutiae Points')
+    plt.title(title)
     plt.axis('off')
     plt.show()
 
