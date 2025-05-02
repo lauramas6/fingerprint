@@ -14,8 +14,11 @@ def extract_minutiae_CN(thinned):
             if thinned[i, j] == 255:  # Ridge pixel
                 # Get pixel values in 8-neighborhood
                 pixel_values = []
-                for di, dj in neighbors[:8]:
+                for di, dj in neighbors:
                     pixel_values.append(thinned[i+di, j+dj])
+                
+                # Add the first element again to complete the circle
+                pixel_values.append(pixel_values[0])
                 
                 # Calculate crossing number
                 cn = 0
