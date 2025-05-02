@@ -1,105 +1,67 @@
-import os
-import numpy as np
-from collections import defaultdict
-from sklearn.metrics.pairwise import cosine_similarity
-from src.dataset import load_image_paths, load_image, extract_label_from_filename
+from src.dataset import load_image_paths, load_image
 from src.preprocessing import binarize_image, thin_image
 from src.minutiae_extraction import extract_minutiae_CN, extract_minutiae_grayscale
 from src.features import extract_feature_vector
+from src.authentication import authenticate
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc
+import numpy as np
 
-
-def authenticate(template_db, query_vector, subject_id, threshold=0.85):
-    """
-    Compare query fingerprint vector with enrolled template of claimed subject ID.
-    Returns True (accept) or False (reject).
-    """
-    if subject_id not in template_db:
-        return False
-
-    enrolled_vector = template_db[subject_id]
-    sim = cosine_similarity([enrolled_vector], [query_vector])[0][0]
-    return sim >= threshold
-
-
-def build_templates(image_paths, method='CN', grid_size=8):
-    """
-    Build enrollment templates using one fingerprint per subject.
-    """
-    enrolled = {}
-    for path in image_paths:
-        subject_id = extract_label_from_filename(path)
-        if subject_id in enrolled:
-            continue  # only use one image per subject for enrollment
-
-        img = load_image(path)
-        if method == 'CN':
-            binary = binarize_image(img)
-            thinned = thin_image(binary)
-            minutiae = extract_minutiae_CN(thinned)
-        else:
-            minutiae = extract_minutiae_grayscale(img)
-
-        if len(minutiae) == 0:
-            continue
-
-        fv = extract_feature_vector(minutiae, img.shape, grid_size)
-        enrolled[subject_id] = fv
-
-    return enrolled
-
-
-def run_authentication(image_paths, template_db, method='CN', grid_size=8, threshold=0.85):
-    """
-    Attempt to authenticate all fingerprints against their claimed ID.
-    """
-    total = 0
-    correct = 0
-
-    for path in image_paths:
-        subject_id = extract_label_from_filename(path)
-
-        # Skip images used in enrollment
-        if subject_id in template_db and path.endswith('__1.BMP'):
-            continue
-
-        img = load_image(path)
-        if method == 'CN':
-            binary = binarize_image(img)
-            thinned = thin_image(binary)
-            minutiae = extract_minutiae_CN(thinned)
-        else:
-            minutiae = extract_minutiae_grayscale(img)
-
-        if len(minutiae) == 0:
-            continue
-
-        fv = extract_feature_vector(minutiae, img.shape, grid_size)
-        is_auth = authenticate(template_db, fv, subject_id, threshold)
-
-        total += 1
-        if is_auth:
-            correct += 1
-
-    accuracy = correct / total if total > 0 else 0.0
-    return accuracy
-
+def plot_roc_curve(fpr, tpr):
+    """Plot the ROC curve."""
+    roc_auc = auc(fpr, tpr)
+    plt.figure()
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC)')
+    plt.legend(loc='lower right')
+    plt.show()
 
 def main():
     dataset_path = 'data/SOCOFing/Real'
-    image_paths = load_image_paths(dataset_path)
 
-    # Enroll one image per subject (usually ending in __1.BMP)
-    template_CN = build_templates(image_paths, method='CN')
-    template_Gray = build_templates(image_paths, method='grayscale')
+    # Step 1: Load gallery images
+    gallery_paths = load_image_paths(dataset_path)[:100]  # e.g., 100 for enrollment
+    gallery_db = []
 
-    # Authenticate all other images
-    acc_CN = run_authentication(image_paths, template_CN, method='CN')
-    acc_Gray = run_authentication(image_paths, template_Gray, method='grayscale')
+    for path in gallery_paths:
+        img = load_image(path)
+        thinned = thin_image(binarize_image(img))
+        minutiae = extract_minutiae_CN(thinned)
+        if len(minutiae) == 0:
+            continue
+        fv = extract_feature_vector(minutiae, img.shape)
+        subject_id = path.split('/')[-1].split('__')[0]
+        gallery_db.append((subject_id, fv))
 
-    print(f"\n[Authentication Accuracy]")
-    print(f"Crossing Number (CN):     {acc_CN * 100:.2f}%")
-    print(f"Grayscale-Based Method:   {acc_Gray * 100:.2f}%")
+    # Step 2: Authenticate a query fingerprint
+    query_path = 'data/SOCOFing/Real/001__M_Left_index.BMP'
+    query_img = load_image(query_path)
+    thinned_query = thin_image(binarize_image(query_img))
+    minutiae_query = extract_minutiae_CN(thinned_query)
+    query_fv = extract_feature_vector(minutiae_query, query_img.shape)
 
+    claimed_id = '001'  # Claiming to be subject 001
+    method = 'CN'  # Choose 'CN' or 'Grayscale' method for authentication
+
+    # Perform authentication
+    accuracy, TPR, FPR, FNR, TNR, TP, TN, FP, FN, best_match_id, best_similarity = authenticate(
+        claimed_id, query_fv, gallery_db, method=method
+    )
+
+    # Print metrics
+    print(f"Authentication result: {'MATCH' if best_match_id == claimed_id else 'NO MATCH'} (Score: {best_similarity:.2f})")
+    print(f"Accuracy: {accuracy:.2f}")
+    print(f"TPR: {TPR:.2f} | FPR: {FPR:.2f} | FNR: {FNR:.2f} | TNR: {TNR:.2f}")
+
+    # Plot ROC curve
+    fpr_values = [FPR]
+    tpr_values = [TPR]
+    plot_roc_curve(fpr_values, tpr_values)
 
 if __name__ == '__main__':
     main()
