@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 def plot_minutiae(img, minutiae_cn, minutiae_grayscale, title_cn="Minutiae (Crossing Number)", title_grayscale="Minutiae (Grayscale Method)"):
-     """Overlay minutiae points on fingerprint image and display side by side."""
+    """Overlay minutiae points on fingerprint image and display side by side."""
     plt.figure(figsize=(12, 6))
 
     # Plot Crossing Number method
