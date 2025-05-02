@@ -1,64 +1,105 @@
+import os
+import numpy as np
+from collections import defaultdict
+from sklearn.metrics.pairwise import cosine_similarity
 from src.dataset import load_image_paths, load_image, extract_label_from_filename
 from src.preprocessing import binarize_image, thin_image
-from src.minutiae_extraction import extract_minutiae_CN
+from src.minutiae_extraction import extract_minutiae_CN, extract_minutiae_grayscale
 from src.features import extract_feature_vector
-from src.train import train_classifier, evaluate_classifier
-from src.display import plot_confusion_matrix
 
-import numpy as np
 
-def main():
-    dataset_path = 'data/SOCOFing/Real'  # <-- update this if needed
-    image_paths = load_image_paths(dataset_path)
+def authenticate(template_db, query_vector, subject_id, threshold=0.85):
+    """
+    Compare query fingerprint vector with enrolled template of claimed subject ID.
+    Returns True (accept) or False (reject).
+    """
+    if subject_id not in template_db:
+        return False
 
-    X_CN, X_Grayscale, Y = [], [], []
+    enrolled_vector = template_db[subject_id]
+    sim = cosine_similarity([enrolled_vector], [query_vector])[0][0]
+    return sim >= threshold
+
+
+def build_templates(image_paths, method='CN', grid_size=8):
+    """
+    Build enrollment templates using one fingerprint per subject.
+    """
+    enrolled = {}
+    for path in image_paths:
+        subject_id = extract_label_from_filename(path)
+        if subject_id in enrolled:
+            continue  # only use one image per subject for enrollment
+
+        img = load_image(path)
+        if method == 'CN':
+            binary = binarize_image(img)
+            thinned = thin_image(binary)
+            minutiae = extract_minutiae_CN(thinned)
+        else:
+            minutiae = extract_minutiae_grayscale(img)
+
+        if len(minutiae) == 0:
+            continue
+
+        fv = extract_feature_vector(minutiae, img.shape, grid_size)
+        enrolled[subject_id] = fv
+
+    return enrolled
+
+
+def run_authentication(image_paths, template_db, method='CN', grid_size=8, threshold=0.85):
+    """
+    Attempt to authenticate all fingerprints against their claimed ID.
+    """
+    total = 0
+    correct = 0
 
     for path in image_paths:
-        img = load_image(path)
+        subject_id = extract_label_from_filename(path)
 
-        # CN method
-        binary = binarize_image(img)
-        thinned = thin_image(binary)
-        minutiae_CN = extract_minutiae_CN(thinned)
-        if len(minutiae_CN) == 0:
-            continue  # skip images with no detected minutiae
-        fv_CN = extract_feature_vector(minutiae_CN, img.shape, grid_size=8)
-
-        # Grayscale method
-        minutiae_grayscale = extract_minutiae_grayscale(img)
-        if len(minutiae_grayscale) == 0:
+        # Skip images used in enrollment
+        if subject_id in template_db and path.endswith('__1.BMP'):
             continue
-        fv_grayscale = extract_feature_vector(minutiae_grayscale, img.shape, grid_size=8)
 
-        # Append both
-        X_CN.append(fv_CN)
-        X_Grayscale.append(fv_grayscale)
-        Y.append(extract_label_from_filename(path))
+        img = load_image(path)
+        if method == 'CN':
+            binary = binarize_image(img)
+            thinned = thin_image(binary)
+            minutiae = extract_minutiae_CN(thinned)
+        else:
+            minutiae = extract_minutiae_grayscale(img)
 
-    # Convert to arrays
-    X_CN = np.array(X_CN)
-    X_Grayscale = np.array(X_Grayscale)
-    Y = np.array(Y)
+        if len(minutiae) == 0:
+            continue
 
-    # Split once, use same split for both classifiers
-    XCN_train, XCN_test, Y_train, Y_test = train_test_split(X_CN, Y, test_size=0.2, random_state=42)
-    XH_train, XH_test, _, _ = train_test_split(X_Grayscale, Y, test_size=0.2, random_state=42)
+        fv = extract_feature_vector(minutiae, img.shape, grid_size)
+        is_auth = authenticate(template_db, fv, subject_id, threshold)
 
-    # Train + Evaluate CN
-    clf_CN = train_classifier(XCN_train, Y_train)
-    acc_CN, cm_CN = evaluate_classifier(clf_CN, XCN_test, Y_test)
+        total += 1
+        if is_auth:
+            correct += 1
 
-    # Train + Evaluate Grayscale
-    clf_H = train_classifier(XH_train, Y_train)
-    acc_H, cm_H = evaluate_classifier(clf_H, XH_test, Y_test)
+    accuracy = correct / total if total > 0 else 0.0
+    return accuracy
 
-    print("\n=== Results: Crossing Number (CN) ===")
-    print(f"Accuracy: {acc_CN * 100:.2f}%")
-    plot_confusion_matrix(cm_CN)
 
-    print("\n=== Results: Grayscale  ===")
-    print(f"Accuracy: {acc_H * 100:.2f}%")
-    plot_confusion_matrix(cm_H)
+def main():
+    dataset_path = 'data/SOCOFing/Real'
+    image_paths = load_image_paths(dataset_path)
+
+    # Enroll one image per subject (usually ending in __1.BMP)
+    template_CN = build_templates(image_paths, method='CN')
+    template_Gray = build_templates(image_paths, method='grayscale')
+
+    # Authenticate all other images
+    acc_CN = run_authentication(image_paths, template_CN, method='CN')
+    acc_Gray = run_authentication(image_paths, template_Gray, method='grayscale')
+
+    print(f"\n[Authentication Accuracy]")
+    print(f"Crossing Number (CN):     {acc_CN * 100:.2f}%")
+    print(f"Grayscale-Based Method:   {acc_Gray * 100:.2f}%")
+
 
 if __name__ == '__main__':
     main()
