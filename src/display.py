@@ -20,9 +20,9 @@ def plot_confusion_matrix(cm):
     plt.ylabel('True')
     plt.show()
 
-def plot_accuracy_comparison(acc_cn, acc_harris):
-    methods = ['Crossing Number (CN)', 'Harris Corner']
-    accuracies = [acc_cn * 100, acc_harris * 100]
+def plot_accuracy_comparison(acc_cn, acc_grayscale):
+    methods = ['Crossing Number (CN)', 'Grayscale']
+    accuracies = [acc_cn * 100, acc_grayscale * 100]
 
     plt.figure(figsize=(6, 4))
     bars = plt.bar(methods, accuracies, color=['skyblue', 'salmon'])

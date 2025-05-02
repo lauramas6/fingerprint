@@ -1,6 +1,6 @@
 from src.dataset import load_image
 from src.preprocessing import binarize_image, thin_image
-from src.minutiae_extraction import extract_minutiae_CN, extract_minutiae_Harris
+from src.minutiae_extraction import extract_minutiae_CN, extract_minutiae_grayscale
 from src.display import plot_minutiae
 import os
 
@@ -14,12 +14,12 @@ binary = binarize_image(img)
 thinned = thin_image(binary)
 minutiae_cn = extract_minutiae_CN(thinned)
 
-# --- Harris Method ---
-minutiae_harris = extract_minutiae_Harris(img)
+# --- Grayscale Method ---
+minutiae_grayscale = extract_minutiae_grayscale(img)
 
 # --- Visualize Both ---
 print(f"CN Minutiae Count: {len(minutiae_cn)}")
-print(f"Harris Minutiae Count: {len(minutiae_harris)}")
+print(f"Grayscale Minutiae Count: {len(minutiae_grayscale)}")
 
 plot_minutiae(img, minutiae_cn, title="Minutiae (Crossing Number)")
-plot_minutiae(img, minutiae_harris, title="Minutiae (Harris Corner Detection)")
+plot_minutiae(img, minutiae_grayscale, title="Minutiae (Grayscale)")
