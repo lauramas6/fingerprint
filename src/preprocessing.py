@@ -1,7 +1,8 @@
 import cv2
 
 def binarize_image(img):
-    """Binarize image using Otsu's method."""
+    if len(img.shape) == 3:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     return binary
 
