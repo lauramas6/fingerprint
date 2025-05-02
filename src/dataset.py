@@ -10,8 +10,9 @@ def load_image(filepath):
     return cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
 
 def extract_label_from_filename(filename):
-    """Extract subject ID from filename."""
+    """Extract subject ID from filename, assuming the format is 'ID__gender_finger'."""
     base = os.path.basename(filename)
     parts = base.split('__')
-    subject_id = int(parts[0])
+    subject_id = int(parts[0])  # The first part before '__' is the subject ID
     return subject_id
+
