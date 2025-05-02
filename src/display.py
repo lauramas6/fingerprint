@@ -1,14 +1,27 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def plot_minutiae(img, minutiae_points, title="Minutiae Points"):
-    """Overlay minutiae points on fingerprint image."""
-    plt.figure(figsize=(6, 6))
+def plot_minutiae(img, minutiae_cn, minutiae_grayscale, title_cn="Minutiae (Crossing Number)", title_grayscale="Minutiae (Grayscale Method)"):
+     """Overlay minutiae points on fingerprint image and display side by side."""
+    plt.figure(figsize=(12, 6))
+
+    # Plot Crossing Number method
+    plt.subplot(1, 2, 1)
     plt.imshow(img, cmap='gray')
-    y, x = zip(*minutiae_points)
-    plt.scatter(x, y, c='red', s=10)
-    plt.title(title)
+    y_cn, x_cn = zip(*minutiae_cn)
+    plt.scatter(x_cn, y_cn, c='red', s=10)
+    plt.title(title_cn)
     plt.axis('off')
+
+    # Plot Grayscale-based method (Harris corner and gradients)
+    plt.subplot(1, 2, 2)
+    plt.imshow(img, cmap='gray')
+    y_grayscale, x_grayscale = zip(*minutiae_grayscale)
+    plt.scatter(x_grayscale, y_grayscale, c='blue', s=10)
+    plt.title(title_grayscale)
+    plt.axis('off')
+
+    plt.tight_layout()
     plt.show()
 
 def plot_confusion_matrix(cm):

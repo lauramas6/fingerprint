@@ -21,5 +21,5 @@ minutiae_grayscale = extract_minutiae_grayscale(img)
 print(f"CN Minutiae Count: {len(minutiae_cn)}")
 print(f"Grayscale Minutiae Count: {len(minutiae_grayscale)}")
 
-plot_minutiae(img, minutiae_cn, title="Minutiae (Crossing Number)")
-plot_minutiae(img, minutiae_grayscale, title="Minutiae (Grayscale)")
+plot_minutiae(img, minutiae_cn, minutiae_grayscale)
+
