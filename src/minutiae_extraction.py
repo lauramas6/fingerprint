@@ -14,9 +14,12 @@ def extract_minutiae_CN(thinned):
                     minutiae.append((i, j))
     return np.array(minutiae)
 
-def extract_minutiae_Harris(img, threshold=0.01):
-    """Extract points of interest using Harris corner detection."""
+def extract_minutiae_Harris(img, threshold=0.05):
+    """Extract Harris corner points without filtering nearby points."""
     harris_corners = cv2.cornerHarris(np.float32(img), 2, 3, 0.04)
+    harris_corners = cv2.dilate(harris_corners, None)  # Enhances corner responses
+
     coords = np.argwhere(harris_corners > threshold * harris_corners.max())
     coords = [(int(y), int(x)) for y, x in coords]  # (row, col) format
     return np.array(coords)
+
