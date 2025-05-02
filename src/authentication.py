@@ -13,12 +13,12 @@ def compute_metrics(true_labels, predicted_labels):
     FP = np.sum((true_labels == 0) & (predicted_labels == 1))  # False positives
     FN = np.sum((true_labels == 1) & (predicted_labels == 0))  # False negatives
 
-    # Compute metrics
-    accuracy = (TP + TN) / len(true_labels)
-    TPR = TP / (TP + FN)  # True Positive Rate
-    FPR = FP / (FP + TN)  # False Positive Rate
-    FNR = FN / (FN + TP)  # False Negative Rate
-    TNR = TN / (TN + FP)  # True Negative Rate
+    # Compute metrics with safe division
+    accuracy = (TP + TN) / len(true_labels) if len(true_labels) > 0 else 0
+    TPR = TP / (TP + FN) if (TP + FN) > 0 else 0  # True Positive Rate
+    FPR = FP / (FP + TN) if (FP + TN) > 0 else 0  # False Positive Rate
+    FNR = FN / (FN + TP) if (FN + TP) > 0 else 0  # False Negative Rate
+    TNR = TN / (TN + FP) if (TN + FP) > 0 else 0  # True Negative Rate
 
     return accuracy, TPR, FPR, FNR, TNR, TP, TN, FP, FN
 
@@ -33,9 +33,7 @@ def authenticate(claimed_id, query_fv, gallery_db, method='CN', threshold=0.8):
 
     # Compare against gallery database
     for subject_id, fv_gallery in gallery_db:
-        if method == 'CN':  # Using Crossing Number method
-            similarity = compare_minutiae(query_fv, fv_gallery)
-        elif method == 'Grayscale':  # Using Grayscale method
+        if method in ['CN', 'Grayscale']:
             similarity = compare_minutiae(query_fv, fv_gallery)
         else:
             raise ValueError("Invalid method. Choose 'CN' or 'Grayscale'.")

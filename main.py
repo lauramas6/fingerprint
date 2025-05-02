@@ -9,23 +9,27 @@ import numpy as np
 
 def plot_roc_curve(fpr, tpr):
     """Plot the ROC curve."""
-    roc_auc = auc(fpr, tpr)
-    plt.figure()
-    plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic (ROC)')
-    plt.legend(loc='lower right')
-    plt.show()
+    if len(fpr) >= 2 and len(tpr) >= 2:
+        roc_auc = auc(fpr, tpr)
+        plt.figure()
+        plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
+        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver Operating Characteristic (ROC)')
+        plt.legend(loc='lower right')
+        plt.show()
+    else:
+        print("⚠️ Not enough data to plot ROC curve.")
 
 def main():
     dataset_path = 'data/SOCOFing/Real'
 
     # Step 1: Load gallery images
-    gallery_paths = load_image_paths(dataset_path)[:100]  # e.g., 100 for enrollment
+    #gallery_paths = load_image_paths(dataset_path)[:100000]  # Use 100,0000 images for enrollment
+    gallery_paths = [p for p in load_image_paths(dataset_path) if p.split('/')[-1].startswith("101__")] #load only image 101
     gallery_db = []
 
     for path in gallery_paths:
@@ -50,40 +54,42 @@ def main():
         },
         {
             "path": 'data/SOCOFing/Real/64__M_Left_index_finger.BMP',  # Impostor claim
-            "claimed_id": '30'
+            "claimed_id": '64'
         }
     ]
 
-    # Store metrics for ROC curve
     fpr_values = []
     tpr_values = []
 
+    # Step 3: Authenticate each query
     for i, query in enumerate(queries):
-        print(f"\nProcessing query {i+1}: {query['path']}")  # 🟡 Debug print
-        query_img = load_image(query["path"])
+        print(f"\nProcessing query {i+1}: {query['path']}")
         query_img = load_image(query["path"])
         thinned_query = thin_image(binarize_image(query_img))
         minutiae_query = extract_minutiae_CN(thinned_query)
+
         if len(minutiae_query) == 0:
             print(f"Query {i+1}: No minutiae extracted, skipping.")
             continue
+
         query_fv = extract_feature_vector(minutiae_query, query_img.shape)
 
         accuracy, TPR, FPR, FNR, TNR, TP, TN, FP, FN, best_match_id, best_similarity = authenticate(
             query["claimed_id"], query_fv, gallery_db, method=method
         )
 
-    # Print metrics
-    print(f"\nQuery {i+1}: {query['path']}")
-    print(f"Authentication result: {'MATCH' if best_match_id == query['claimed_id'] else 'NO MATCH'} (Score: {best_similarity:.2f})")
-    print(f"Accuracy: {accuracy:.2f}")
-    print(f"TPR: {TPR:.2f} | FPR: {FPR:.2f} | FNR: {FNR:.2f} | TNR: {TNR:.2f}")
+        # Print results for this query
+        print(f"Query {i+1}: {query['path']}")
+        print(f"Authentication result: {'MATCH' if best_match_id == query['claimed_id'] else 'NO MATCH'} (Score: {best_similarity:.2f})")
+        print(f"Accuracy: {accuracy:.2f}")
+        print(f"TPR: {TPR:.2f} | FPR: {FPR:.2f} | FNR: {FNR:.2f} | TNR: {TNR:.2f}")
 
-    # Plot ROC curve
-    if not np.isnan(TPR) and not np.isnan(FPR):  # only add valid data
-        tpr_values.append(TPR)
-        fpr_values.append(FPR)
+        # Save ROC data if valid
+        if not np.isnan(TPR) and not np.isnan(FPR):
+            tpr_values.append(TPR)
+            fpr_values.append(FPR)
 
+    # Step 4: Plot ROC Curve
     plot_roc_curve(fpr_values, tpr_values)
 
 if __name__ == '__main__':

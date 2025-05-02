@@ -1,0 +1,35 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environments
+venv/
+env/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Mac system files
+.DS_Store
+
+# OS-generated files
+Thumbs.db
+
+# Dataset folders
+data/
+datasets/
+
+# Fingerprint image files (if not versioned)
+*.BMP
+*.bmp
+
+# Logs
+*.log
+
+# Environment files
+.env
