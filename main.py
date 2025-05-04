@@ -1,3 +1,4 @@
+import os
 from src.dataset import load_image_paths, load_image
 from src.preprocessing import binarize_image, thin_image
 from src.minutiae_extraction import extract_minutiae_CN, extract_minutiae_grayscale
@@ -25,11 +26,15 @@ def plot_roc_curve(fpr, tpr):
         print("⚠️ Not enough data to plot ROC curve.")
 
 def main():
-    dataset_path = 'data/SOCOFing/Real'
+    # Use os.path.join to make paths OS-independent
+    dataset_path = os.path.join('data', 'SOCOFing', 'Real')
 
-    # Step 1: Load gallery images
-    #gallery_paths = load_image_paths(dataset_path)[:100000]  # Use 100,0000 images for enrollment
-    gallery_paths = [p for p in load_image_paths(dataset_path) if p.split('/')[-1].startswith("101__")] #load only image 101
+    # Load gallery images and ensure proper path handling
+    gallery_paths = [
+        p for p in load_image_paths(dataset_path)
+        if os.path.basename(p).startswith("101__")
+    ]
+    
     gallery_db = []
 
     for path in gallery_paths:
@@ -41,19 +46,21 @@ def main():
             print(f"⚠️ No minutiae extracted from gallery image: {path}")  # 🟡 Debug warning
             continue
         fv = extract_feature_vector(minutiae, img.shape)
-        subject_id = path.split('/')[-1].split('__')[0]
+        
+        # Get subject ID from filename (handling OS-specific path separators)
+        subject_id = os.path.basename(path).split('__')[0]
         gallery_db.append((subject_id, fv))
 
     method = 'CN'  # Choose 'CN' or 'Grayscale'
 
-    # Step 2: Define two queries – one genuine and one impostor
+    # Define queries with paths
     queries = [
         {
-            "path": 'data/SOCOFing/Real/101__M_Left_index_finger.BMP',  # Genuine match
+            "path": os.path.join('data', 'SOCOFing', 'Real', '101__M_Left_index_finger.BMP'),
             "claimed_id": '101'
         },
         {
-            "path": 'data/SOCOFing/Real/64__M_Left_index_finger.BMP',  # Impostor claim
+            "path": os.path.join('data', 'SOCOFing', 'Real', '64__M_Left_index_finger.BMP'),
             "claimed_id": '64'
         }
     ]
