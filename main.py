@@ -23,9 +23,17 @@ def plot_roc_curve(fpr, tpr):
         plt.legend(loc='lower right')
         plt.show()
     else:
-        print("⚠️ Not enough data to plot ROC curve.")
+        print("Not enough data to plot ROC curve.")
 
 def main():
+    # Prompt the user to select the minutiae extraction method (CN or Grayscale)
+    method = input("Select the minutiae extraction method (CN/Grayscale): ").strip()
+
+    # Validate input
+    while method not in ['CN', 'Grayscale']:
+        print("Invalid choice. Please enter either 'CN' or 'Grayscale'.")
+        method = input("Select the minutiae extraction method (CN/Grayscale): ").strip()
+
     # Use os.path.join to make paths OS-independent
     dataset_path = os.path.join('data', 'SOCOFing', 'Real')
 
@@ -41,17 +49,21 @@ def main():
         print(f"Processing gallery image: {path}")  # 🟡 Debug print
         img = load_image(path)
         thinned = thin_image(binarize_image(img))
-        minutiae = extract_minutiae_CN(thinned)
+
+        # Choose the appropriate minutiae extraction method
+        if method == 'CN':
+            minutiae = extract_minutiae_CN(thinned)
+        else:
+            minutiae = extract_minutiae_grayscale(thinned)
+
         if len(minutiae) == 0:
-            print(f"⚠️ No minutiae extracted from gallery image: {path}")  # 🟡 Debug warning
+            print(f"No minutiae extracted from gallery image: {path}")  # 🟡 Debug warning
             continue
         fv = extract_feature_vector(minutiae, img.shape)
         
         # Get subject ID from filename (handling OS-specific path separators)
         subject_id = os.path.basename(path).split('__')[0]
         gallery_db.append((subject_id, fv))
-
-    method = 'CN'  # Choose 'CN' or 'Grayscale'
 
     # Define queries with paths
     queries = [
@@ -73,7 +85,11 @@ def main():
         print(f"\nProcessing query {i+1}: {query['path']}")
         query_img = load_image(query["path"])
         thinned_query = thin_image(binarize_image(query_img))
-        minutiae_query = extract_minutiae_CN(thinned_query)
+        # Choose the appropriate minutiae extraction method
+        if method == 'CN':
+            minutiae_query = extract_minutiae_CN(thinned_query)
+        else:
+            minutiae_query = extract_minutiae_grayscale(thinned_query)
 
         if len(minutiae_query) == 0:
             print(f"Query {i+1}: No minutiae extracted, skipping.")
