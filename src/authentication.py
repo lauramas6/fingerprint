@@ -22,32 +22,19 @@ def compute_metrics(true_labels, predicted_labels):
 
     return accuracy, TPR, FPR, FNR, TNR, TP, TN, FP, FN
 
-def authenticate(claimed_id, query_fv, gallery_db, method='CN', threshold=0.8):
+def authenticate(claimed_id, query_fv, gallery_db, method, threshold=0.8):
     """Authenticate a fingerprint by comparing with gallery using CN or Grayscale method."""
+    """Authenticate a fingerprint by comparing with gallery."""
     best_match_id = None
     best_similarity = 0
 
-    # Store the true labels and predicted labels for metric calculation
-    true_labels = []
-    predicted_labels = []
-
-    # Compare against gallery database
     for subject_id, fv_gallery in gallery_db:
-        if method in ['CN', 'Grayscale']:
-            similarity = compare_minutiae(query_fv, fv_gallery)
-        else:
-            raise ValueError("Invalid method. Choose 'CN' or 'Grayscale'.")
-
-        # Store the true and predicted labels (1 for match, 0 for non-match)
-        true_labels.append(1 if subject_id == claimed_id else 0)
-        predicted_labels.append(1 if similarity >= threshold else 0)
-
-        # Track the best match
+        similarity = compare_minutiae(query_fv, fv_gallery)
         if similarity > best_similarity:
             best_similarity = similarity
             best_match_id = subject_id
 
-    # Compute metrics based on all gallery comparisons
-    accuracy, TPR, FPR, FNR, TNR, TP, TN, FP, FN = compute_metrics(np.array(true_labels), np.array(predicted_labels))
+    # Determine if authentication succeeded
+    is_match = (best_match_id == claimed_id and best_similarity >= threshold)
 
-    return accuracy, TPR, FPR, FNR, TNR, TP, TN, FP, FN, best_match_id, best_similarity
+    return is_match, best_match_id, best_similarity

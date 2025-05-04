@@ -27,12 +27,16 @@ def plot_roc_curve(fpr, tpr):
 
 def main():
     # Prompt the user to select the minutiae extraction method (CN or Grayscale)
-    method = input("Select the minutiae extraction method (CN/Grayscale): ").strip()
+    print("Select the minutiae extraction method:")
+    print("1 - CN (Crossing Number)")
+    print("2 - Grayscale-based")
+    choice = input("Your choice: ").strip()
 
-    # Validate input
-    while method not in ['CN', 'Grayscale']:
-        print("Invalid choice. Please enter either 'CN' or 'Grayscale'.")
-        method = input("Select the minutiae extraction method (CN/Grayscale): ").strip()
+    while choice not in ['1', '2']:
+        print("Invalid choice. Please enter 1 for CN or 2 for Grayscale.")
+        choice = input("Enter your choice (1 or 2): ").strip()
+
+    method = 'CN' if choice == '1' else 'Grayscale'
 
     # Use os.path.join to make paths OS-independent
     dataset_path = os.path.join('data', 'SOCOFing', 'Real')
@@ -77,19 +81,22 @@ def main():
         }
     ]
 
+    TP = TN = FP = FN = 0
+    threshold = 0.8
     fpr_values = []
     tpr_values = []
 
-    # Step 3: Authenticate each query
     for i, query in enumerate(queries):
         print(f"\nProcessing query {i+1}: {query['path']}")
         query_img = load_image(query["path"])
         thinned_query = thin_image(binarize_image(query_img))
-        # Choose the appropriate minutiae extraction method
+
         if method == 'CN':
             minutiae_query = extract_minutiae_CN(thinned_query)
+            print(f"Minutiae extracted using CN method: {len(minutiae_query)} minutiae found.")
         else:
             minutiae_query = extract_minutiae_grayscale(thinned_query)
+            print(f"Minutiae extracted using Grayscale method: {len(minutiae_query)} minutiae found.")
 
         if len(minutiae_query) == 0:
             print(f"Query {i+1}: No minutiae extracted, skipping.")
@@ -97,22 +104,44 @@ def main():
 
         query_fv = extract_feature_vector(minutiae_query, query_img.shape)
 
-        accuracy, TPR, FPR, FNR, TNR, TP, TN, FP, FN, best_match_id, best_similarity = authenticate(
-            query["claimed_id"], query_fv, gallery_db, method=method
+        is_match, best_match_id, best_similarity = authenticate(
+            query["claimed_id"], query_fv, gallery_db, method=method, threshold=threshold
         )
 
-        # Print results for this query
+        claimed_id = query["claimed_id"]
+        actual_match = (best_match_id == claimed_id)
+        passed_threshold = best_similarity >= threshold
+
+        # Confusion matrix logic
+        if actual_match and passed_threshold:
+            TP += 1
+        elif not actual_match and passed_threshold:
+            FP += 1
+        elif actual_match and not passed_threshold:
+            FN += 1
+        elif not actual_match and not passed_threshold:
+            TN += 1
+
         print(f"Query {i+1}: {query['path']}")
-        print(f"Authentication result: {'MATCH' if best_match_id == query['claimed_id'] else 'NO MATCH'} (Score: {best_similarity:.2f})")
-        print(f"Accuracy: {accuracy:.2f}")
-        print(f"TPR: {TPR:.2f} | FPR: {FPR:.2f} | FNR: {FNR:.2f} | TNR: {TNR:.2f}")
+        print(f"Authentication result: {'MATCH' if is_match else 'NO MATCH'} (Score: {best_similarity:.2f})")
 
-        # Save ROC data if valid
-        if not np.isnan(TPR) and not np.isnan(FPR):
-            tpr_values.append(TPR)
-            fpr_values.append(FPR)
+        # Save ROC data
+        fpr_values.append(FP / (FP + TN) if (FP + TN) > 0 else 0)
+        tpr_values.append(TP / (TP + FN) if (TP + FN) > 0 else 0)
 
-    # Step 4: Plot ROC Curve
+    # Final performance metrics
+    total = TP + TN + FP + FN
+    accuracy = (TP + TN) / total if total > 0 else 0
+    TPR = TP / (TP + FN) if (TP + FN) > 0 else 0
+    FPR = FP / (FP + TN) if (FP + TN) > 0 else 0
+    FNR = FN / (FN + TP) if (FN + TP) > 0 else 0
+    TNR = TN / (TN + FP) if (TN + FP) > 0 else 0
+
+    print("\n--- Overall Metrics ---")
+    print(f"Accuracy: {accuracy:.2f}")
+    print(f"TPR: {TPR:.2f} | FPR: {FPR:.2f} | FNR: {FNR:.2f} | TNR: {TNR:.2f}")
+
+    # Plot ROC
     plot_roc_curve(fpr_values, tpr_values)
 
 if __name__ == '__main__':
