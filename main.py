@@ -42,13 +42,16 @@ def main():
     dataset_path = os.path.join('data', 'SOCOFing', 'Real')
 
     # Load gallery images and ensure proper path handling
-    gallery_paths = [
+    '''gallery_paths = [
         p for p in load_image_paths(dataset_path)
         if os.path.basename(p).startswith("101__")
-    ]
+    ]'''
     
+    # Load all images from the dataset (600 individuals, 10 images each)
+    image_paths = load_image_paths(dataset_path)
     gallery_db = []
 
+    '''
     for path in gallery_paths:
         print(f"Processing gallery image: {path}")  # 🟡 Debug print
         img = load_image(path)
@@ -67,10 +70,36 @@ def main():
         
         # Get subject ID from filename (handling OS-specific path separators)
         subject_id = os.path.basename(path).split('__')[0]
-        gallery_db.append((subject_id, fv))
+        gallery_db.append((subject_id, fv))'''
+
+    for i in range(1, 601):  # 600 individuals, IDs from 1 to 600
+        subject_images = [p for p in image_paths if os.path.basename(p).startswith(f"{i}__")]
+        if not subject_images:
+            print(f"No images found for subject ID {i}")
+            continue
+
+        # Use the first image of the subject for gallery (can modify based on your choice)
+        path = subject_images[0]
+        print(f"Processing gallery image for subject {i}: {path}")
+        img = load_image(path)
+        thinned = thin_image(binarize_image(img))
+
+        # Choose the appropriate minutiae extraction method
+        if method == 'CN':
+            minutiae = extract_minutiae_CN(thinned)
+        else:
+            minutiae = extract_minutiae_grayscale(thinned)
+
+        if len(minutiae) == 0:
+            print(f"No minutiae extracted from gallery image: {path}")
+            continue
+
+        fv = extract_feature_vector(minutiae, img.shape)
+        gallery_db.append((str(i), fv))  # Store the feature vector with subject ID
+
 
     # Define queries with paths
-    queries = [
+    '''queries = [
         {
             "path": os.path.join('data', 'SOCOFing', 'Real', '101__M_Left_index_finger.BMP'),
             "claimed_id": '101'
@@ -79,7 +108,29 @@ def main():
             "path": os.path.join('data', 'SOCOFing', 'Real', '64__M_Left_index_finger.BMP'),
             "claimed_id": '64'
         }
-    ]
+    ]'''
+
+    # Define queries, assume you have 10 queries for testing
+    queries = []
+    # Genuine attempts: real image, correct claimed ID
+    for i in range(1, 11):  # 10 subjects
+        matches = [p for p in image_paths if os.path.basename(p).startswith(f"{i}__")]
+        if matches:
+            queries.append({
+                "path": matches[0],
+                "claimed_id": str(i)  # correct claim
+            })
+
+    # Impostor attempts: real image, incorrect claimed ID
+    for i in range(1, 6):  # pick 5 impostor attempts
+        real_id = i
+        impostor_id = real_id + 1 if real_id < 600 else real_id - 1
+        matches = [p for p in image_paths if os.path.basename(p).startswith(f"{real_id}__")]
+        if matches:
+            queries.append({
+                "path": matches[0],
+                "claimed_id": str(impostor_id)  # fake claim
+            })
 
     TP = TN = FP = FN = 0
     threshold = 0.8
@@ -107,19 +158,20 @@ def main():
         is_match, best_match_id, best_similarity = authenticate(
             query["claimed_id"], query_fv, gallery_db, method=method, threshold=threshold
         )
-
+        actual_id = os.path.basename(query["path"]).split("__")[0]
         claimed_id = query["claimed_id"]
-        actual_match = (best_match_id == claimed_id)
+        
+        is_genuine = (actual_id == claimed_id)
         passed_threshold = best_similarity >= threshold
 
-        # Confusion matrix logic
-        if actual_match and passed_threshold:
+        # Update confusion matrix
+        if is_genuine and passed_threshold:
             TP += 1
-        elif not actual_match and passed_threshold:
+        elif not is_genuine and passed_threshold:
             FP += 1
-        elif actual_match and not passed_threshold:
+        elif is_genuine and not passed_threshold:
             FN += 1
-        elif not actual_match and not passed_threshold:
+        elif not is_genuine and not passed_threshold:
             TN += 1
 
         print(f"Query {i+1}: {query['path']}")

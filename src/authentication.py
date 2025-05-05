@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.spatial.distance import cosine
+from sklearn.metrics.pairwise import cosine_similarity
+
 
 def compare_minutiae(fv_query, fv_gallery):
     """Compare two feature vectors using cosine similarity."""
@@ -26,10 +28,10 @@ def authenticate(claimed_id, query_fv, gallery_db, method, threshold=0.8):
     """Authenticate a fingerprint by comparing with gallery using CN or Grayscale method."""
     """Authenticate a fingerprint by comparing with gallery."""
     best_match_id = None
-    best_similarity = 0
+    best_similarity = -1
 
     for subject_id, fv_gallery in gallery_db:
-        similarity = compare_minutiae(query_fv, fv_gallery)
+        similarity = cosine_similarity([query_fv], [fv_gallery])[0][0]#compare_minutiae(query_fv, fv_gallery)
         if similarity > best_similarity:
             best_similarity = similarity
             best_match_id = subject_id
