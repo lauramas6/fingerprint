@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import auc, confusion_matrix, ConfusionMatrixDisplay
 import numpy as np
 import random
+import sys
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding='utf-8')
 
 def plot_roc_curve(fpr, tpr):
     import matplotlib.pyplot as plt
