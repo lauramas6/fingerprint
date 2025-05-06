@@ -10,26 +10,28 @@ import numpy as np
 import random
 
 def plot_roc_curve(fpr, tpr):
+    import matplotlib.pyplot as plt
+    from sklearn.metrics import auc
+
     if len(fpr) >= 2 and len(tpr) >= 2:
         sorted_pairs = sorted(zip(fpr, tpr))
         fpr_sorted, tpr_sorted = zip(*sorted_pairs)
         roc_auc = auc(fpr_sorted, tpr_sorted)
 
-        plt.figure()
-        plt.plot(fpr_sorted, tpr_sorted, color='darkorange', lw=2,
-                 label='ROC curve (area = %0.2f)' % roc_auc)
-        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+        plt.figure(figsize=(6, 6))
+        plt.plot(fpr_sorted, tpr_sorted, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='Random chance')
         plt.xlim([0.0, 1.0])
         plt.ylim([0.0, 1.05])
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
         plt.title('Receiver Operating Characteristic (ROC)')
+        plt.grid(True)
         plt.legend(loc='lower right')
+        plt.tight_layout()
         plt.show()
     else:
-        print("Not enough data to plot ROC curve.")
-
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+        print("⚠️ Not enough points to plot ROC curve.")
 
 def main():
     print("Select the minutiae extraction method:")
@@ -65,11 +67,11 @@ def main():
     # === QUERIES: Mix of 100 queries, 10 true matches ===
     all_paths = load_image_paths(dataset_path)
     random.shuffle(all_paths)
-    total_queries = 100
+    total_queries = 500
     added = 0
     true_match_paths = [
         os.path.join(dataset_path, f"{gallery_id}__M_{finger_type}.BMP")
-        for _ in range(10)
+        for _ in range(50)
     ]
 
     for path in true_match_paths:
@@ -148,14 +150,11 @@ def main():
     FNR = FN / (FN + TP) if (FN + TP) > 0 else 0
 
     print("\n📊 Metrics")
-    print(f"✅ Accuracy: {accuracy:.2f}")
-    print(f"TPR: {TPR:.2f} | FPR: {FPR:.2f} | TNR: {TNR:.2f} | FNR: {FNR:.2f}")
+    print(f"✅ Accuracy: {accuracy:.4f}")
+    print(f"TPR: {TPR:.4f} | FPR: {FPR:.4f} | TNR: {TNR:.4f} | FNR: {FNR:.4f}")
     print(f"TP: {TP}, TN: {TN}, FP: {FP}, FN: {FN}")
 
-    # === PLOTS ===
-    plot_roc_curve(fpr_values, tpr_values)
 
-    from sklearn.metrics import ConfusionMatrixDisplay
     cm = np.array([[TN, FP], [FN, TP]])
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["Impostor", "Genuine"])
     disp.plot(cmap='Blues')
